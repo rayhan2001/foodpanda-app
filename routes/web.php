@@ -43,3 +43,12 @@ Route::get('/sso-login', function (Request $request) {
         return 'Invalid or tampered token!';
     }
 });
+
+Route::get('/sso-logout', function (Request $request) {
+    Auth::logout();
+
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect('/login')->with('status', 'You have been logged out from both systems.');
+});
