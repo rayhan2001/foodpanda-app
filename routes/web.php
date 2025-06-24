@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
     return view('welcome');
@@ -18,3 +21,34 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+Route::get('/sso-login', function (Request $request) {
+    try {
+        $decrypted = Crypt::decryptString($request->token);
+        $data = json_decode($decrypted, true);
+
+        if ($data['expires_at'] < now()->timestamp) {
+            return 'Token expired';
+        }
+
+        $user = \App\Models\User::where('email', $data['email'])->first();
+        if (!$user) {
+            return 'User not found in Foodpanda DB';
+        }
+
+        Auth::login($user);
+
+        return redirect('/dashboard');
+    } catch (\Exception $e) {
+        return 'Invalid or tampered token!';
+    }
+});
+
+Route::get('/sso-logout', function (Request $request) {
+    Auth::logout();
+
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect('/login')->with('status', 'You have been logged out from both systems.');
+});
